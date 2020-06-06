@@ -3,7 +3,9 @@ import { Link, useHistory } from 'react-router-dom';
 import { FiArrowLeft } from 'react-icons/fi';
 import { Map, TileLayer, Marker } from 'react-leaflet';
 import axios from 'axios';
-import { LeafletMouseEvent, latLng } from 'leaflet';
+import { LeafletMouseEvent } from 'leaflet';
+
+import Dropzone from '../../components/Dropzone';
 
 import api from '../../services/api';
 import './styles.css';
@@ -46,11 +48,12 @@ const CreatePoint = () => {
     0,
     0,
   ]);
+  const [selectedFile, setSelectedFile] = useState<File>();
 
   const history = useHistory();
 
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition(position => {
+    navigator.geolocation.getCurrentPosition((position) => {
       const { latitude, longitude } = position.coords;
 
       setInitialPosition([latitude, longitude]);
@@ -58,7 +61,7 @@ const CreatePoint = () => {
   }, []);
 
   useEffect(() => {
-    api.get('items').then(response => {
+    api.get('items').then((response) => {
       setItems(response.data);
     });
   }, []);
@@ -68,8 +71,8 @@ const CreatePoint = () => {
       .get<IBGEUFResponse[]>(
         'https://servicodados.ibge.gov.br/api/v1/localidades/estados',
       )
-      .then(response => {
-        const ufInitials = response.data.map(uf => uf.sigla);
+      .then((response) => {
+        const ufInitials = response.data.map((uf) => uf.sigla);
 
         setUfs(ufInitials);
       });
@@ -84,8 +87,8 @@ const CreatePoint = () => {
       .get<IBGECityResponse[]>(
         `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedUF}/municipios`,
       )
-      .then(response => {
-        const cityNames = response.data.map(city => city.nome);
+      .then((response) => {
+        const cityNames = response.data.map((city) => city.nome);
 
         setCities(cityNames);
       });
@@ -117,10 +120,10 @@ const CreatePoint = () => {
   }
 
   function handleSelectedItem(id: number) {
-    const alreadySelected = selectedItems.findIndex(item => item === id);
+    const alreadySelected = selectedItems.findIndex((item) => item === id);
 
     if (alreadySelected >= 0) {
-      const filteredItems = selectedItems.filter(item => item !== id);
+      const filteredItems = selectedItems.filter((item) => item !== id);
 
       setSelectedItems(filteredItems);
     } else {
@@ -137,16 +140,20 @@ const CreatePoint = () => {
     const [latitude, longitude] = selectedPosition;
     const items = selectedItems;
 
-    const data = {
-      name,
-      email,
-      whatsapp,
-      uf,
-      city,
-      latitude,
-      longitude,
-      items,
-    };
+    const data = new FormData();
+
+    data.append('name', name);
+    data.append('email', email);
+    data.append('whatsapp', whatsapp);
+    data.append('uf', uf);
+    data.append('city', city);
+    data.append('latitude', String(latitude));
+    data.append('longitude', String(longitude));
+    data.append('items', items.join(','));
+
+    if (selectedFile) {
+      data.append('image', selectedFile);
+    }
 
     await api.post('points', data);
 
@@ -169,6 +176,8 @@ const CreatePoint = () => {
         <h1>
           Cadastro do <br /> ponto de coleta
         </h1>
+
+        <Dropzone onFileUploaded={setSelectedFile} />
 
         <fieldset>
           <legend>
@@ -233,7 +242,7 @@ const CreatePoint = () => {
                 onChange={handleSelectUf}
               >
                 <option value="0">Selecione uma UF</option>
-                {ufs.map(uf => (
+                {ufs.map((uf) => (
                   <option key={uf} value={uf}>
                     {uf}
                   </option>
@@ -250,7 +259,7 @@ const CreatePoint = () => {
                 id="city"
               >
                 <option value="0">Selecione uma cidade</option>
-                {cities.map(city => (
+                {cities.map((city) => (
                   <option key={city} value={city}>
                     {city}
                   </option>
@@ -267,7 +276,7 @@ const CreatePoint = () => {
           </legend>
 
           <ul className="items-grid">
-            {items.map(item => (
+            {items.map((item) => (
               <li
                 key={item.id}
                 className={selectedItems.includes(item.id) ? 'selected' : ''}
